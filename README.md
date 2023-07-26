@@ -1,0 +1,1 @@
+Forecasting 2023 upcoming months based on previous months data  using average of previous years, current year variance and previous year variance averaged and multiplied by the past years average and current variance calculated based on forecast value recently calculated
