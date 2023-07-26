@@ -1,0 +1,44 @@
+import pandas as pd
+from datetime import datetime
+df1=pd.read_excel('CustomerJourney_Forecasting_new.xlsx')
+df2 = pd.read_excel('CustomerJourney_Forecasting_new.xlsx') 
+
+columns_to_aggregate = ['2021', '2022','2023']
+temp_table = df2.groupby('Month')[columns_to_aggregate].sum().reset_index()
+
+temp_table.rename(columns={'2023': '2023-M','2022': '2022-M','2021': '2021-M' }, inplace=True)
+
+temp_table['Average PY-M'] = (temp_table['2021-M'] + temp_table['2022-M']) / 2
+temp_table['Variance PY-M'] = (temp_table['2022-M'] - temp_table['2021-M']) / temp_table['2021-M']
+temp_table['Variance CY-M'] = (temp_table['2023-M'] - temp_table['2022-M']) / temp_table['2022-M']
+
+
+start_index = max(datetime.now().month, 3)
+end_index = len(temp_table)
+for i in range(start_index, end_index):
+
+        sum_i = temp_table.at[i-1,'Variance CY-M'] + temp_table.at[i-2,'Variance CY-M']+ temp_table.at[i-3,'Variance CY-M']
+
+        temp_table.at[i, 'sum_i-M'] = sum_i
+        temp_table.at[i, '2023-M'] = temp_table.at[i, 'Average PY-M'] * (1 + (sum_i + temp_table.at[i, 'Variance PY-M']) / 4)
+        temp_table.at[i, 'Variance CY-M'] = (temp_table.at[i, '2023-M'] - temp_table.at[i, '2022-M']) / temp_table.at[i, '2022-M'] 
+
+df1 = pd.merge(df1, temp_table, on='Month', how='left')
+
+df1['Average PY'] = (df1['2021'] + df1['2022']) / 2
+df1['Variance PY'] = (df1['2022'] - df1['2021']) / df1['2021']
+
+for (coe, region), group_df in df1.groupby(['COE', 'Region']):
+    group_df = group_df.sort_values('Month')
+    start_index = max(datetime.now().month, 3)
+    end_index = len(group_df)
+
+    for i in range(start_index, end_index):
+
+        sum_i = df1.at[group_df.index[i-1],'Variance CY'] + df1.at[group_df.index[i-2],'Variance CY']+ df1.at[group_df.index[i-3],'Variance CY']
+
+        df1.at[group_df.index[i], 'sum_i'] = sum_i
+        df1.at[group_df.index[i], '2023'] = group_df.at[group_df.index[i], 'Average PY'] * (1 + (sum_i + group_df.at[group_df.index[i], 'Variance PY']) / 4)
+        df1.at[group_df.index[i], 'Variance CY'] = (df1.at[group_df.index[i], '2023'] - group_df.at[group_df.index[i], '2022']) / group_df.at[group_df.index[i], '2022']
+
+df1.sort_values(by=['COE', 'Region', 'Month'])
