@@ -1,0 +1,31 @@
+import pandas as pd
+from datetime import datetime
+
+df1=pd.read_excel('CustomerJourney_Forecasting_Report without years.xlsx')
+
+df1['Average TY-1'] = (df1['TY-1'] + df1['TY-2']) / 2
+df1['Variance TY-1'] = (df1['TY-1'] - df1['TY-2']) / df1['TY-2']
+df1['TY-Predicted'] = df1['TY']
+
+
+for (region), group_df in df1.groupby(['CC Region']):
+    group_df = group_df.sort_values('Month')
+    start_index = 0
+    end_index = len(group_df)
+
+    for i in range(start_index, end_index): 
+        # For Jan, Feb, March
+        if i<3:
+            sum_i = group_df['Variance TY-1'].iloc[i-3:].sum()+group_df['Variance TY'].iloc[:i].sum()
+            
+        #For Apr-Dec
+        else:
+            sum_i = group_df['Variance TY'].iloc[i-3:i].sum()
+
+       # to evaluate sum_i - df1.at[group_df.index[i], 'sum_i'] = sum_i
+        df1.at[group_df.index[i], 'TY-Predicted'] = group_df.at[group_df.index[i], 'Average TY-1'] * (1 + (sum_i + group_df.at[group_df.index[i], 'Variance TY-1']) / 4)
+        
+        if df1.at[group_df.index[i], 'Variance TY'] == -1:
+         df1.at[group_df.index[i], 'Variance TY'] = (df1.at[group_df.index[i], 'TY-Predicted'] - group_df.at[group_df.index[i], 'TY-1']) / group_df.at[group_df.index[i], 'TY-1']
+ 
+df1.sort_values(by=['CC Region', 'Month'])
